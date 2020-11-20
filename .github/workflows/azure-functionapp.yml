@@ -9,8 +9,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@28c7f3d2b5162b5ddd3dfd9a45aa55eaf396478b # pin@v2
-    - uses: actions/setup-dotnet@6efb2bd78f16e08562660f8246d6bd76adf6281f # pin@v1
+    - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # pin@v2 
+    - uses: actions/setup-dotnet@51f68377c181a79065c61bd492bd49be4575c439 # pin@v1 
     - name: build
       run: dotnet build -c Release
     - name: test
@@ -48,7 +48,7 @@ jobs:
             cd deploy
             chmod +x deploy.sh
             ./deploy.sh $ResourceGroup
-      - uses: azure/functions-action@6042d67de76fd158d51281ddb40a22c3e1c1e1d1 # pin@v1 
+      - uses: azure/functions-action@a8d2ec41638acb2742695dcb061c05601d2bfb87 # pin@v1 
         with:
           app-name: ${{ env.ResourceGroup }}
           package: functionapp
