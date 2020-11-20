@@ -1,8 +1,10 @@
-﻿using Microsoft.Azure.Storage;
-using Microsoft.Azure.Storage.Blob;
+﻿using Azure.Core;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
+using Azure.Storage.Blobs.Specialized;
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,16 +13,18 @@ namespace GitMirrorAutomation.Logic.Storage
 {
     public class AzureBlobStorageProvider : IStorageProvider
     {
-        private readonly CloudBlobClient _blobClient;
-        private readonly string _container;
+        private BlobContainerClient _blobContainerClient;
 
         public AzureBlobStorageProvider(
             string connectionString,
             string container)
         {
-            _container = container ?? throw new ArgumentNullException(nameof(container));
-            var storageClient = CloudStorageAccount.Parse(connectionString ?? throw new ArgumentNullException(nameof(connectionString)));
-            _blobClient = storageClient.CreateCloudBlobClient();
+            _blobContainerClient = new BlobContainerClient(connectionString, container);
+        }
+
+        public AzureBlobStorageProvider(TokenCredential msiCredentials, string account, string container)
+        {
+            _blobContainerClient = new BlobContainerClient(new Uri($"https://{account}.blob.core.windows.net/{container}"), msiCredentials);
         }
 
         public string Escape(string fileName)
@@ -31,7 +35,7 @@ namespace GitMirrorAutomation.Logic.Storage
             CancellationToken cancellationToken)
         {
             var block = await GetBlockBlobAsync(fileName, false, cancellationToken);
-            return await block.ExistsAsync(null, null, cancellationToken);
+            return await block.ExistsAsync(cancellationToken);
         }
 
         public async Task<string[]> ListAsync(string prefix, CancellationToken cancellationToken)
@@ -39,14 +43,10 @@ namespace GitMirrorAutomation.Logic.Storage
             var container = await GetContainerAsync(true, cancellationToken);
 
             var list = new List<string>();
-            BlobContinuationToken? token = null;
-            do
+            await foreach (var file in container.GetBlobsAsync(prefix: prefix, cancellationToken: cancellationToken))
             {
-                var r = await container.ListBlobsSegmentedAsync(prefix, token);
-                list.AddRange(r.Results.Select(b => b.Uri.GetLeftPart(UriPartial.Path).Substring(container.Uri.ToString().Length + 1)));
-                token = r.ContinuationToken;
+                list.Add(file.Name);
             }
-            while (token != null);
 
             return list.ToArray();
         }
@@ -56,7 +56,9 @@ namespace GitMirrorAutomation.Logic.Storage
             CancellationToken cancellationToken)
         {
             var blob = await GetBlockBlobAsync(fileName, false, cancellationToken);
-            return await blob.DownloadTextAsync(Encoding.UTF8, null, null, null, cancellationToken);
+            var response = await blob.DownloadAsync(cancellationToken: cancellationToken);
+            using (var streamReader = new StreamReader(response.Value.Content))
+                return await streamReader.ReadToEndAsync();
         }
 
         public async Task SetAsync(
@@ -65,7 +67,8 @@ namespace GitMirrorAutomation.Logic.Storage
             CancellationToken cancellationToken)
         {
             var blob = await GetBlockBlobAsync(fileName, true, cancellationToken);
-            await blob.UploadTextAsync(content, null, null, null, null, cancellationToken);
+            using (var ms = new MemoryStream(Encoding.UTF8.GetBytes(content)))
+                await blob.UploadAsync(ms, new BlobUploadOptions(), cancellationToken);
         }
 
         public async Task DeleteAsync(string fileName, CancellationToken cancellationToken)
@@ -74,25 +77,24 @@ namespace GitMirrorAutomation.Logic.Storage
             await blob.DeleteIfExistsAsync();
         }
 
-        private async Task<CloudBlobContainer> GetContainerAsync(
+        private async Task<BlobContainerClient> GetContainerAsync(
             bool createContainerIfNotExists,
             CancellationToken cancellationToken)
         {
-            var container = _blobClient.GetContainerReference(_container);
             if (createContainerIfNotExists)
-                await container.CreateIfNotExistsAsync(BlobContainerPublicAccessType.Off, null, null, cancellationToken);
+                await _blobContainerClient.CreateIfNotExistsAsync(PublicAccessType.None, cancellationToken: cancellationToken);
 
-            return container;
+            return _blobContainerClient;
         }
 
-        private async Task<CloudBlockBlob> GetBlockBlobAsync(
+        private async Task<BlockBlobClient> GetBlockBlobAsync(
             string filePath,
             bool createContainerIfNotExists,
             CancellationToken cancellationToken)
         {
             var container = await GetContainerAsync(createContainerIfNotExists, cancellationToken);
 
-            return container.GetBlockBlobReference(filePath);
+            return container.GetBlockBlobClient(filePath);
         }
     }
 }

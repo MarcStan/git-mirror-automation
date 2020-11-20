@@ -80,7 +80,7 @@ namespace GitMirrorAutomation.Logic.Mirrors
                 var buildWithRepo = JsonSerializer.Deserialize<Build>(buildDefinition.GetRawText(), JsonSettings.Default);
                 // normalize because github/gitlab allow both urls ending in .git and without
                 // and Azure DevOps builds can also use both types of urls as source for builds
-                var foundUrl = Normalize(buildWithRepo.Repository.Url);
+                var foundUrl = Normalize(buildWithRepo!.Repository.Url);
                 expectedRepoUrls = expectedRepoUrls.Select(Normalize).ToArray();
                 if (!expectedRepoUrls.Contains(foundUrl))
                     throw new NotSupportedException($"Expected build '{build.Name}' to use one of these repos: '{string.Join(", ", expectedRepoUrls)}' as source but it uses '{buildWithRepo.Repository.Url}'");
@@ -129,6 +129,7 @@ namespace GitMirrorAutomation.Logic.Mirrors
                     // manually updated a build to new repository source and compared differences
                     var apiUrl = githubWebUrl.Replace("https://github.com", "https://api.github.com/repos");
                     var userNameAndRepo = $"{gh.UserName}/{repository.Name}";
+#pragma warning disable CS8602 // Dereference of a possibly null reference.
                     jObject["repository"]["id"] = userNameAndRepo;
                     jObject["repository"]["name"] = userNameAndRepo;
                     jObject["repository"]["url"] = githubWebUrl + ".git";
@@ -141,6 +142,7 @@ namespace GitMirrorAutomation.Logic.Mirrors
                     jObject["repository"]["properties"]["safeRepository"] = userNameAndRepo;
                     jObject["repository"]["properties"]["shortName"] = repository.Name;
                     jObject["name"] = _config.BuildNamePrefix + repository.Name;
+#pragma warning restore CS8602 // Dereference of a possibly null reference.
                     break;
                 case "dev.azure.com":
                     var ado = (AzureDevOpsRepositoryTarget)_repositorySource;
@@ -150,10 +152,12 @@ namespace GitMirrorAutomation.Logic.Mirrors
 
                     var project = adoRepo.Project;
 
+#pragma warning disable CS8602 // Dereference of a possibly null reference.
                     jObject["repository"]["id"] = adoRepo.Id;
                     jObject["repository"]["name"] = repository.Name;
                     jObject["repository"]["url"] = _repositorySource.GetRepositoryUrls(repository).First();
                     jObject["name"] = _config.BuildNamePrefix + project + " - " + repository.Name;
+#pragma warning restore CS8602 // Dereference of a possibly null reference.
                     break;
                 default:
                     throw new NotSupportedException($"Currently {_repositorySource.Type} is not supported as a repository source!");
@@ -165,7 +169,7 @@ namespace GitMirrorAutomation.Logic.Mirrors
             if (!response.IsSuccessStatusCode)
                 throw new InvalidOperationException($"Failed to create build. Response: " + createdBuildJson);
 
-            var build = JsonSerializer.Deserialize<Build>(createdBuildJson, JsonSettings.Default);
+            var build = JsonSerializer.Deserialize<Build>(createdBuildJson, JsonSettings.Default) ?? throw new Exception("compiler");
 
             _log.LogInformation($"Queue initial build to mirror {repository.Name}");
             json = JsonSerializer.Serialize(new

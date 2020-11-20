@@ -24,7 +24,7 @@ namespace GitMirrorAutomation.Logic
         {
             if (source.ValueKind == JsonValueKind.String)
             {
-                var url = source.GetString();
+                var url = source.GetString()!;
                 switch (new Uri(url).Host.ToLowerInvariant())
                 {
                     case "github.com":

@@ -1,6 +1,6 @@
-﻿using GitMirrorAutomation.Logic.Config;
-using Microsoft.Azure.KeyVault;
-using Microsoft.Azure.Services.AppAuthentication;
+﻿using Azure.Identity;
+using Azure.Security.KeyVault.Secrets;
+using GitMirrorAutomation.Logic.Config;
 using System;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -17,11 +17,10 @@ namespace GitMirrorAutomation.Logic.Helpers
             var match = _keyVaultRegex.Match(accessToken.Source);
             if (!match.Success)
                 throw new ArgumentException("Currently only keyvault source is supported but found: " + accessToken.Source);
-            var tokenProvider = new AzureServiceTokenProvider();
-            var kvClient = new KeyVaultClient(new KeyVaultClient.AuthenticationCallback(tokenProvider.KeyVaultTokenCallback));
 
-            var secret = await kvClient.GetSecretAsync(accessToken.Source, accessToken.SecretName, cancellationToken);
-            return secret.Value;
+            var client = new SecretClient(new Uri(accessToken.Source), new DefaultAzureCredential());
+            var secret = await client.GetSecretAsync(accessToken.SecretName, null, cancellationToken);
+            return secret.Value.Value;
         }
     }
 }

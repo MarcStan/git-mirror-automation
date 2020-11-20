@@ -107,7 +107,7 @@ namespace GitMirrorAutomation.Logic.Targets
             // first get project to get id (not set in list)
             var response = await source.HttpClient.GetAsync($"https://dev.azure.com/{source.DevOpsOrganization}/_apis/projects/{toClone.Name}?api-version=5.1", cancellationToken);
             response.EnsureSuccessStatusCode();
-            var sourceProject = await JsonSerializer.DeserializeAsync<Project>(await response.Content.ReadAsStreamAsync(), JsonSettings.Default, cancellationToken);
+            var sourceProject = await JsonSerializer.DeserializeAsync<Project>(await response.Content.ReadAsStreamAsync(), JsonSettings.Default, cancellationToken) ?? throw new NotSupportedException("missing project");
             // with project id we can query project properties
             // api is eternally in preview
             var properties = await source.GetCollectionAsync<NameValue>($"https://dev.azure.com/{source.DevOpsOrganization}/_apis/projects/{sourceProject.Id}/properties?api-version=5.1-preview.1", cancellationToken);

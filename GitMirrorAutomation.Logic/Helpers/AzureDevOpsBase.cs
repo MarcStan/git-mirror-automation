@@ -53,7 +53,7 @@ namespace GitMirrorAutomation.Logic.Helpers
                     (continuationToken != null ? $"&continuationToken={continuationToken}" : "");
                 var response = await HttpClient.GetAsync(nextUrl, cancellationToken);
                 response.EnsureSuccessStatusCode();
-                var data = await JsonSerializer.DeserializeAsync<Collection<T>>(await response.Content.ReadAsStreamAsync(), JsonSettings.Default);
+                var data = await JsonSerializer.DeserializeAsync<Collection<T>>(await response.Content.ReadAsStreamAsync(), JsonSettings.Default) ?? new Collection<T>();
                 items.AddRange(data.Value);
 
                 if (response.Headers.TryGetValues("x-ms-continuationtoken", out var values))

@@ -63,6 +63,6 @@ namespace GitMirrorAutomation.Func
         }
 
         private static Configuration ParseConfiguration(string json)
-            => JsonSerializer.Deserialize<Configuration>(json, JsonSettings.Default);
+            => JsonSerializer.Deserialize<Configuration>(json, JsonSettings.Default) ?? throw new NotSupportedException("failed loading config");
     }
 }
