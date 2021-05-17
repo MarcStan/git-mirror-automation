@@ -1,4 +1,5 @@
 on:
+  workflow_dispatch:
   push:
     branches:
       - master
@@ -10,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # pin@v2 
-    - uses: actions/setup-dotnet@51f68377c181a79065c61bd492bd49be4575c439 # pin@v1 
+    - uses: actions/setup-dotnet@a71d1eb2c86af85faa8c772c03fb365e377e45ea # pin@v1 
     - name: build
       run: dotnet build -c Release
     - name: test
@@ -48,7 +49,7 @@ jobs:
           cd deploy
           chmod +x deploy.sh
           ./deploy.sh $ResourceGroup
-    - uses: azure/functions-action@a8d2ec41638acb2742695dcb061c05601d2bfb87 # pin@v1 
+    - uses: azure/functions-action@90060f5decddf3bb5ebf2c533607c4d4827cf8fa # pin@v1 
       with:
         app-name: ${{ env.ResourceGroup }}
         package: functionapp
